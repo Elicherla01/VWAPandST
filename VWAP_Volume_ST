@@ -1,0 +1,139 @@
+//@version=6
+// Created by Ravindra Elicherla (@Ravindra_PE) with inputs from  @tradematicX
+ 
+indicator("VWAP Volume Signal with SuperTrend", shorttitle="VVS-ST", overlay=true)
+
+// Input parameters
+ma_length = input.int(21, title="Volume MA Length", minval=1)
+show_vwap = input.bool(true, title="Show VWAP")
+show_signals = input.bool(true, title="Show Buy/Sell Signals")
+show_volume_ma = input.bool(false, title="Show Volume MA (separate pane)")
+
+// SuperTrend parameters
+st_length = input.int(10, title="SuperTrend ATR Length", minval=1)
+st_factor = input.float(3.0, title="SuperTrend ATR Factor", minval=0.1, step=0.1)
+show_supertrend = input.bool(true, title="Show SuperTrend")
+
+// Calculate VWAP
+vwap_value = ta.vwap(hlc3)
+
+// Calculate volume moving average
+volume_ma = ta.sma(volume, ma_length)
+
+// SuperTrend calculation
+atr = ta.atr(st_length)
+hl2_val = hl2
+upper_band = hl2_val + (st_factor * atr)
+lower_band = hl2_val - (st_factor * atr)
+
+var float supertrend = na
+var bool trend_up = true
+
+prev_supertrend = supertrend[1]
+prev_trend_up = trend_up[1]
+
+if na(prev_supertrend)
+    supertrend := lower_band
+    trend_up := true
+else
+    if prev_trend_up
+        lower_band := lower_band > prev_supertrend ? lower_band : prev_supertrend
+        supertrend := close <= lower_band ? upper_band : lower_band
+        trend_up := close > lower_band
+    else
+        upper_band := upper_band < prev_supertrend ? upper_band : prev_supertrend
+        supertrend := close >= upper_band ? lower_band : upper_band
+        trend_up := close >= upper_band
+
+// SuperTrend direction
+st_bullish = trend_up
+st_bearish = not trend_up
+
+// Determine buy and sell volume (simplified approach)
+// Buy volume: volume when price closes higher than open
+// Sell volume: volume when price closes lower than open
+buy_volume = close > open ? volume : 0
+sell_volume = close < open ? volume : 0
+
+// Calculate moving averages of buy and sell volumes
+buy_volume_ma = ta.sma(buy_volume, ma_length)
+sell_volume_ma = ta.sma(sell_volume, ma_length)
+
+// Generate signal conditions WITH SuperTrend filter
+buy_condition = close > vwap_value and buy_volume > buy_volume_ma and st_bullish
+sell_condition = close < vwap_value and sell_volume > sell_volume_ma and st_bearish
+
+// Track last signal type to prevent consecutive same signals
+var string last_signal = "none"
+
+// Check for buy or sell condition (only trigger on new condition)
+buy_signal_trigger = buy_condition and not buy_condition[1]
+sell_signal_trigger = sell_condition and not sell_condition[1]
+
+// Only allow signals if different from last signal type
+can_buy = last_signal != "buy" and buy_signal_trigger
+can_sell = last_signal != "sell" and sell_signal_trigger
+
+// Final buy and sell signals
+buy_signal = can_buy
+sell_signal = can_sell
+
+// Update last signal tracker
+if buy_signal
+    last_signal := "buy"
+if sell_signal
+    last_signal := "sell"
+
+// Plot VWAP
+plot(show_vwap ? vwap_value : na, color=color.blue, linewidth=2, title="VWAP")
+
+// Plot SuperTrend
+supertrend_color = st_bullish ? color.green : color.red
+plot(show_supertrend ? supertrend : na, color=supertrend_color, linewidth=2, title="SuperTrend")
+
+// Plot buy and sell signals
+plotshape(show_signals and buy_signal, title="Buy Signal", location=location.belowbar, 
+          style=shape.labelup, size=size.small, color=color.green, textcolor=color.white, text="BUY")
+plotshape(show_signals and sell_signal, title="Sell Signal", location=location.abovebar, 
+          style=shape.labeldown, size=size.small, color=color.red, textcolor=color.white, text="SELL")
+
+// Background coloring for trend
+bgcolor(buy_signal ? color.new(color.green, 95) : sell_signal ? color.new(color.red, 95) : na, title="Signal Background")
+
+// Alerts
+alertcondition(buy_signal, title="Buy Signal Alert", message="VWAP Volume Buy Signal Generated (SuperTrend Bullish)")
+alertcondition(sell_signal, title="Sell Signal Alert", message="VWAP Volume Sell Signal Generated (SuperTrend Bearish)")
+alertcondition(buy_signal or sell_signal, title="Any Signal Alert", message="VWAP Volume Signal Generated")
+
+// Optional: Plot volume data in separate pane (uncomment if needed)
+// plot(show_volume_ma ? volume : na, title="Volume", color=color.gray, display=display.data_window)
+// plot(show_volume_ma ? volume_ma : na, title="Volume MA", color=color.orange, display=display.data_window)
+// plot(show_volume_ma ? buy_volume : na, title="Buy Volume", color=color.green, display=display.data_window)
+// plot(show_volume_ma ? sell_volume : na, title="Sell Volume", color=color.red, display=display.data_window)
+
+// Enhanced table to show current conditions including SuperTrend
+if barstate.islast and show_signals
+    var table info_table = table.new(position.top_right, 2, 8, bgcolor=color.white, border_width=1)
+    table.cell(info_table, 0, 0, "Condition", text_color=color.black, bgcolor=color.gray)
+    table.cell(info_table, 1, 0, "Status", text_color=color.black, bgcolor=color.gray)
+    table.cell(info_table, 0, 1, "Price vs VWAP", text_color=color.black)
+    table.cell(info_table, 1, 1, close > vwap_value ? "Above" : "Below", 
+               text_color=close > vwap_value ? color.green : color.red)
+    table.cell(info_table, 0, 2, "SuperTrend", text_color=color.black)
+    table.cell(info_table, 1, 2, st_bullish ? "Bullish" : "Bearish", 
+               text_color=st_bullish ? color.green : color.red)
+    table.cell(info_table, 0, 3, "Buy Vol vs MA", text_color=color.black)
+    table.cell(info_table, 1, 3, buy_volume > buy_volume_ma ? "Above" : "Below", 
+               text_color=buy_volume > buy_volume_ma ? color.green : color.red)
+    table.cell(info_table, 0, 4, "Sell Vol vs MA", text_color=color.black)
+    table.cell(info_table, 1, 4, sell_volume > sell_volume_ma ? "Above" : "Below", 
+               text_color=sell_volume > sell_volume_ma ? color.green : color.red)
+    table.cell(info_table, 0, 5, "Volume", text_color=color.black)
+    table.cell(info_table, 1, 5, str.tostring(math.round(volume)), 
+               text_color=color.blue)
+    table.cell(info_table, 0, 6, "Volume MA", text_color=color.black)
+    table.cell(info_table, 1, 6, str.tostring(math.round(volume_ma)), 
+               text_color=color.orange)
+    table.cell(info_table, 0, 7, "Current Signal", text_color=color.black)
+    table.cell(info_table, 1, 7, last_signal == "buy" ? "BUY" : last_signal == "sell" ? "SELL" : "NONE", 
+               text_color=last_signal == "buy" ? color.green : last_signal == "sell" ? color.red : color.gray)
