@@ -105,35 +105,48 @@ alertcondition(buy_signal, title="Buy Signal Alert", message="VWAP Volume Buy Si
 alertcondition(sell_signal, title="Sell Signal Alert", message="VWAP Volume Sell Signal Generated (SuperTrend Bearish)")
 alertcondition(buy_signal or sell_signal, title="Any Signal Alert", message="VWAP Volume Signal Generated")
 
-// Optional: Plot volume data in separate pane (uncomment if needed)
-// plot(show_volume_ma ? volume : na, title="Volume", color=color.gray, display=display.data_window)
-// plot(show_volume_ma ? volume_ma : na, title="Volume MA", color=color.orange, display=display.data_window)
-// plot(show_volume_ma ? buy_volume : na, title="Buy Volume", color=color.green, display=display.data_window)
-// plot(show_volume_ma ? sell_volume : na, title="Sell Volume", color=color.red, display=display.data_window)
-
-// Enhanced table to show current conditions including SuperTrend
+// Enhanced table to match the style in the image
 if barstate.islast and show_signals
-    var table info_table = table.new(position.top_right, 2, 8, bgcolor=color.white, border_width=1)
-    table.cell(info_table, 0, 0, "Condition", text_color=color.black, bgcolor=color.gray)
-    table.cell(info_table, 1, 0, "Status", text_color=color.black, bgcolor=color.gray)
-    table.cell(info_table, 0, 1, "Price vs VWAP", text_color=color.black)
-    table.cell(info_table, 1, 1, close > vwap_value ? "Above" : "Below", 
-               text_color=close > vwap_value ? color.green : color.red)
-    table.cell(info_table, 0, 2, "SuperTrend", text_color=color.black)
-    table.cell(info_table, 1, 2, st_bullish ? "Bullish" : "Bearish", 
-               text_color=st_bullish ? color.green : color.red)
-    table.cell(info_table, 0, 3, "Buy Vol vs MA", text_color=color.black)
-    table.cell(info_table, 1, 3, buy_volume > buy_volume_ma ? "Above" : "Below", 
-               text_color=buy_volume > buy_volume_ma ? color.green : color.red)
-    table.cell(info_table, 0, 4, "Sell Vol vs MA", text_color=color.black)
-    table.cell(info_table, 1, 4, sell_volume > sell_volume_ma ? "Above" : "Below", 
-               text_color=sell_volume > sell_volume_ma ? color.green : color.red)
-    table.cell(info_table, 0, 5, "Volume", text_color=color.black)
-    table.cell(info_table, 1, 5, str.tostring(math.round(volume)), 
-               text_color=color.blue)
-    table.cell(info_table, 0, 6, "Volume MA", text_color=color.black)
-    table.cell(info_table, 1, 6, str.tostring(math.round(volume_ma)), 
-               text_color=color.orange)
-    table.cell(info_table, 0, 7, "Current Signal", text_color=color.black)
-    table.cell(info_table, 1, 7, last_signal == "buy" ? "BUY" : last_signal == "sell" ? "SELL" : "NONE", 
-               text_color=last_signal == "buy" ? color.green : last_signal == "sell" ? color.red : color.gray)
+    var table info_table = table.new(position.top_right, 2, 8, bgcolor=color.new(color.black, 20), border_width=1, border_color=color.gray)
+    
+    // Header row
+    table.cell(info_table, 0, 0, "Condition", text_color=color.white, bgcolor=color.new(color.blue, 0), text_size=size.small)
+    table.cell(info_table, 1, 0, "Status", text_color=color.white, bgcolor=color.new(color.blue, 0), text_size=size.small)
+    
+    // Price vs VWAP
+    price_vs_vwap_status = close > vwap_value ? "Above" : "Below"
+    price_vs_vwap_color = close > vwap_value ? color.new(color.green, 0) : color.new(color.red, 0)
+    table.cell(info_table, 0, 1, "Price vs VWAP", text_color=color.white, bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 1, price_vs_vwap_status, text_color=color.white, bgcolor=price_vs_vwap_color, text_size=size.small)
+    
+    // SuperTrend
+    st_status = st_bullish ? "Bullish" : "Bearish"
+    st_color = st_bullish ? color.new(color.green, 0) : color.new(color.red, 0)
+    table.cell(info_table, 0, 2, "SuperTrend", text_color=color.white, bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 2, st_status, text_color=color.white, bgcolor=st_color, text_size=size.small)
+    
+    // Buy Volume vs MA
+    buy_vol_status = buy_volume > buy_volume_ma ? "Above" : "Below"
+    buy_vol_color = buy_volume > buy_volume_ma ? color.new(color.green, 0) : color.new(color.red, 0)
+    table.cell(info_table, 0, 3, "Buy Vol vs MA", text_color=color.white, bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 3, buy_vol_status, text_color=color.white, bgcolor=buy_vol_color, text_size=size.small)
+    
+    // Sell Volume vs MA
+    sell_vol_status = sell_volume > sell_volume_ma ? "Above" : "Below"
+    sell_vol_color = sell_volume > sell_volume_ma ? color.new(color.green, 0) : color.new(color.red, 0)
+    table.cell(info_table, 0, 4, "Sell Vol vs MA", text_color=color.white, bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 4, sell_vol_status, text_color=color.white, bgcolor=sell_vol_color, text_size=size.small)
+    
+    // Volume
+    table.cell(info_table, 0, 5, "Volume", text_color=color.white, bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 5, str.tostring(math.round(volume)), text_color=color.white, bgcolor=color.new(color.blue, 30), text_size=size.small)
+    
+    // Volume MA
+    table.cell(info_table, 0, 6, "Volume MA", text_color=color.white, bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 6, str.tostring(math.round(volume_ma)), text_color=color.white, bgcolor=color.new(color.orange, 30), text_size=size.small)
+    
+    // Current Signal
+    signal_text = last_signal == "buy" ? "BUY" : last_signal == "sell" ? "SELL" : "NONE"
+    signal_color = last_signal == "buy" ? color.new(color.green, 0) : last_signal == "sell" ? color.new(color.red, 0) : color.new(color.gray, 30)
+    table.cell(info_table, 0, 7, "Current Signal", text_color=color.white, bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 7, signal_text, text_color=color.white, bgcolor=signal_color, text_size=size.small)
